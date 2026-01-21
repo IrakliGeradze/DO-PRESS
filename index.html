@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+    <title>DO PRESS</title>
+    <link rel="icon" href="ic.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        body {
+            margin: 0;
+            background: url(image.png);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .game {
+            position: relative;
+            width: 600px;
+            height: 600px;
+        }
+        .ring {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(white calc(var(--progress) * 1%), black 0);
+            padding: 25px;
+            transform: perspective(1000px) rotateX(17deg);
+            transition: 0.2s;
+        }
+        .inner {
+            width: 100%;
+            height: 100%;
+            background: rgb(2, 49, 2);
+            background-size: 5px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            user-select: none;
+        }
+        .text {
+            font-size: 30px;
+            text-align: center;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px green;
+            margin-bottom: 15px;
+        }
+        .sub {
+            opacity: 0.7;
+            font-size: 14px;
+        }
+        .inner:active {
+            transform: scale(0.97);
+            box-shadow: inset 0 0 60px rgba(0,0,0,1);
+        }
+        .shake {
+            animation: shake 0.1s infinite;
+        }
+        @keyframes shake {
+            0% { 
+                transform: rotate(0deg); 
+            }
+            25% { 
+                transform: rotate(0.5deg); 
+            }
+            50% { 
+                transform: rotate(-0.5deg); 
+            }
+            75% { 
+                transform: rotate(0.3deg); 
+            }
+            100% { 
+                transform: rotate(0deg); 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <div class="ring" id="ring" style="--progress: 0">
+            <div class="inner" id="board">
+            <div class="text" id="instruction">CLICK TO START</div>
+            <div class="sub" id="info"></div>
+            </div>
+        </div>
+    </div>
+<script>
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioCtx();
+    function playTone(freq, duration = 0.1, type = "sine", volume = 0.15) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.value = volume;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+    function soundClick() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        playTone(600, 0.05, "square", 0.1);
+    }
+    function soundSuccess() {
+        playTone(600, 0.1, "sine", 0.2);
+        setTimeout(() => playTone(900, 0.12, "sine", 0.2), 120);
+    }
+    function soundFail() {
+        playTone(300, 0.15, "sawtooth", 0.25);
+        setTimeout(() => playTone(150, 0.25, "sawtooth", 0.25), 120);
+    }
+    function soundHoldTick() {
+        playTone(800, 0.03, "triangle", 0.05);
+    }
+    const instructionEl = document.getElementById("instruction");
+    const infoEl = document.getElementById("info");
+    const ring = document.getElementById("ring");
+    const board = document.getElementById("board");
+    let presses = 0;
+    let target = 0;
+    let score = 0;
+    let highScore = localStorage.getItem('pup_highScore') || 0;
+    let holding = false;
+    let holdTime = 0;
+    let lastRule = null;
+    let memoryCount = 0;
+    let timer = null;
+    let timeLeft = 0;
+    let totalTimeForRule = 0;
+    let forcedNextRule = null;
+    let gameStarted = false;
+    let canClick = true;
+    function generateMathRule() {
+        const num1 = Math.floor(Math.random() * (5 + Math.floor(score / 5))) + 1;
+        const num2 = Math.floor(Math.random() * (5 + Math.floor(score / 5))) + 1;
+        return { text: `SOLVE: ${num1} + ${num2}`, type: "count", target: num1 + num2, time: 7000 };
+    }
+    function generateTruthRule() {
+        const a = Math.floor(Math.random() * 10);
+        const b = Math.floor(Math.random() * 10);
+        const isGreater = Math.random() > 0.5;
+        const isTrue = isGreater ? a > b : a < b;
+        return {
+            text: `PRESS IF ${a} ${isGreater ? '>' : '<'} ${b}`,
+            type: isTrue ? "count" : "noPress",
+            target: 1,
+            time: 6000
+        };
+    }
+    function generatePanicRule() {
+        const target = 15 + Math.floor(Math.random() * 10);
+        return { text: `PANIC! PRESS ${target} TIMES`, type: "count", target: target, time: 5000 };
+    }
+    function generateParityRule() {
+        const num = Math.floor(Math.random() * 50);
+        const wantEven = Math.random() > 0.5;
+        const isCorrect = (num % 2 === 0) === wantEven;
+        return {
+            text: `PRESS IF ${num} IS ${wantEven ? "EVEN" : "ODD"}`,
+            type: isCorrect ? "count" : "noPress",
+            target: 1,
+            time: 7000
+        };
+    }
+    function generateEquationRule() {
+        const a = Math.floor(Math.random() * 10);
+        const b = Math.floor(Math.random() * 10);
+        const res = a + b;
+        const isCorrect = Math.random() > 0.5;
+        const shown = isCorrect ? res : res + (Math.random() > 0.5 ? 1 : -1);
+        return {
+            text: `PRESS IF ${a} + ${b} = ${shown}`,
+            type: isCorrect ? "count" : "noPress",
+            target: 1,
+            time: 8000
+        };
+    }
+    function generateCapitalRule() {
+        const words = ["HELLO", "world", "Test", "CODE", "java", "SCRIPT", "Input", "LOWER"];
+        const word = words[Math.floor(Math.random() * words.length)];
+        const isCaps = word === word.toUpperCase();
+        return {
+            text: `PRESS IF ${word} IS ALL CAPS`,
+            type: isCaps ? "count" : "noPress",
+            target: 1,
+            time: 7000
+        };
+    }
+    function generateAnimalRule() {
+        const animals = ["DOG", "CAT", "MOUSE", "LION", "TIGER", "BEAR", "ZEBRA"];
+        const objects = ["TABLE", "CHAIR", "CAR", "BOOK", "PHONE", "LAMP", "SHOE"];
+        const pickAnimal = Math.random() > 0.5;
+        const word = pickAnimal ? animals[Math.floor(Math.random() * animals.length)] : objects[Math.floor(Math.random() * objects.length)];
+        return {
+            text: `PRESS IF ${word} IS AN ANIMAL`,
+            type: pickAnimal ? "count" : "noPress",
+            target: 1,
+            time: 7000
+        };
+    }
+    function generateDivisibleRule() {
+        const num = Math.floor(Math.random() * 49) + 1;
+        const div = Math.floor(Math.random() * 3) + 2;
+        const isDiv = num % div === 0;
+        return {
+            text: `PRESS IF ${num} IS DIVISIBLE BY ${div}`,
+            type: isDiv ? "count" : "noPress",
+            target: 1,
+            time: 7000
+        };
+    }
+    function generateRomanRule() {
+        const map = { I: 1, V: 5, X: 10, L: 50, C: 100 };
+        const keys = Object.keys(map);
+        const k = keys[Math.floor(Math.random() * keys.length)];
+        const val = map[k];
+        const isCorrect = Math.random() > 0.5;
+        const shown = isCorrect ? val : val + (Math.random() > 0.5 ? 1 : -1) * (val >= 10 ? 5 : 1);
+        return {
+            text: `PRESS IF ${k} IS ${shown}`,
+            type: isCorrect ? "count" : "noPress",
+            target: 1,
+            time: 6000
+        };
+    }
+    function generateMonthRule() {
+        const m31 = ["JAN", "MAR", "MAY", "JUL", "AUG", "OCT", "DEC"];
+        const m30 = ["APR", "JUN", "SEP", "NOV", "FEB"];
+        const pick31 = Math.random() > 0.5;
+        const m = pick31 ? m31[Math.floor(Math.random() * m31.length)] : m30[Math.floor(Math.random() * m30.length)];
+        return {
+            text: `PRESS IF ${m} HAS 31 DAYS`,
+            type: pick31 ? "count" : "noPress",
+            target: 1,
+            time: 4000
+        };
+    }
+    function generateLeapYearRule() {
+        const y = 1980 + Math.floor(Math.random() * 50);
+        const isLeap = (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+        return {
+            text: `PRESS IF ${y} IS A LEAP YEAR`,
+            type: isLeap ? "count" : "noPress",
+            target: 1,
+            time: 7000
+        };
+    }
+    function generatePasswordRule() {
+        const words = [
+            {w: "BANANA", c: 'A', n: 3},
+            {w: "APPLE", c: 'P', n: 2},
+            {w: "LEVEL", c: 'L', n: 2},
+            {w: "CHEESE", c: 'E', n: 3},
+            {w: "BOOKKEEPER", c: 'E', n: 3}
+        ];
+        const item = words[Math.floor(Math.random() * words.length)];
+        const isCorrect = Math.random() > 0.5;
+        const shown = isCorrect ? item.n : item.n + (Math.random() > 0.5 ? 1 : -1);
+        return {
+            text: `PRESS IF ${item.w} HAS ${shown} ${item.c}'S`,
+            type: isCorrect ? "count" : "noPress",
+            target: 1,
+            time: 8000
+        };
+    }
+    function generateFastCount() {
+        const t = Math.floor(Math.random() * 4) + 4;
+        return {
+            text: `PRESS ${t} TIMES FAST!`,
+            type: "count",
+            target: t,
+            time: t * 500 + 1000
+        };
+    }
+    function generateHoldSpecific() {
+        const s = Math.floor(Math.random() * 3) + 1;
+        return {
+            text: `HOLD FOR ${s} SECOND${s>1?'S':''}`,
+            type: "hold",
+            target: s * 1000,
+            time: s * 1000 + 2000
+        };
+    }
+    function generateAlphabetOrder() {
+        const pairs = [
+            ['A', 'B', true], ['B', 'A', false],
+            ['X', 'Y', true], ['Y', 'X', false],
+            ['L', 'M', true], ['M', 'L', false],
+            ['R', 'S', true], ['S', 'R', false]
+        ];
+        const p = pairs[Math.floor(Math.random() * pairs.length)];
+        return {
+            text: `PRESS IF ${p[0]} IS BEFORE ${p[1]}`,
+            type: p[2] ? "count" : "noPress",
+            target: 1,
+            time: 6000
+        };
+    }
+    const gameRules = [
+        { text: "PRESS", type: "count", target: 1, time: 10000 },
+        { text: "DO NOT PRESS", type: "noPress", time: 8000 },
+        { text: "PRESS 2 TIMES", type: "count", target: 2, time: 8000 },
+        { text: "PRESS 0 TIMES", type: "noPress", time: 6000 },
+        { text: "PSREE", type: "noPress", time: 2000 },
+        { text: "PRESS 3 TIMES", type: "count", target: 3, time: 5000 },
+        { text: "PRESS 5 TIMES", type: "count", target: 5, time: 5000 },
+        { text: "10 PRESSES REMAINING", type: "count", target: 10, time: 8000 },
+        generateCapitalRule,
+        { text: "PRESS AND HOLD", type: "hold", target: 9000, time: 18000 },
+        generateFastCount,
+        generateHoldSpecific,
+        generateMathRule,
+        generateEquationRule,
+        generateTruthRule,
+        { text: "150 PRESSES REMAINING", type: "count", target: 150, time: 25000 },
+        { text: "HOLD AND REST", type: "hold", target: 2000, time: 15000 },
+        generateRomanRule,
+        generateMonthRule,
+        generateAlphabetOrder,
+        generatePasswordRule,
+        { text: "WAIT FOR GREEN", type: "waitGreen", time: 10000 },
+        generatePanicRule,
+        { text: "REMEMBER THIS", type: "memory", time: 3000 },
+        { text: "SAME AS LAST", type: "repeat" },
+        { text: "Kindly PRSEE", type: "noPress", time: 3000}
+    ];
+    function startGame() {
+        gameStarted = true;
+        score = 0;
+        nextRule();
+    }
+    function nextRule() {
+        if (score >= gameRules.length) {
+            return winGame();
+        }
+        clearInterval(timer);
+        canClick = true;
+        presses = 0;
+        holdTime = 0;
+        ring.style.setProperty("--progress", 0);
+        ring.style.background = '';
+        infoEl.textContent = '';
+        ring.classList.remove("shake");
+        let rule;
+        if (forcedNextRule) {
+            rule = forcedNextRule;
+            forcedNextRule = null;
+        } else {
+            let ruleGen = gameRules[score];
+            rule = (typeof ruleGen === 'function') ? ruleGen() : { ...ruleGen };
+        }
+        if (rule.type === "repeat") {
+        if (!lastRule) {
+            return nextRule();
+        }
+            rule = { ...lastRule, text: "SAME AS LAST", type: lastRule.type, target: lastRule.target, time: lastRule.time };
+        }
+        if (rule.type === "memory") {
+            memoryCount = Math.floor(Math.random() * 5) + 1;
+            rule.text = "🐱".repeat(memoryCount);
+            forcedNextRule = { text: "PRESS ONCE PER CAT", type: "count", target: memoryCount, time: 5000 };
+        }
+            instructionEl.textContent = rule.text;
+        if (rule.type !== "memory" && rule.text !== "SAME AS LAST") {
+            lastRule = rule;
+        }
+            currentRule = rule;
+        if (rule.type === 'waitGreen') {
+            canClick = false;
+            ring.style.background = 'conic-gradient(var(--red) calc(var(--progress) * 1%), rgba(0,0,0,0.6) 0)';
+        const waitTime = Math.random() * 3000 + 1500;
+            setTimeout(() => {
+                if (currentRule.type !== 'waitGreen') return;
+                instructionEl.textContent = "PRESS NOW!";
+                ring.style.background = 'conic-gradient(var(--green) calc(var(--progress) * 1%), rgba(0,0,0,0.6) 0)';
+                canClick = true;
+        }, waitTime);
+        }
+            totalTimeForRule = rule.time || 5000;
+            timeLeft = totalTimeForRule;
+            timer = setInterval(() => {
+            timeLeft -= 100;
+            if (currentRule.type !== 'hold') {
+                const progress = Math.max(0, 100 - (timeLeft / totalTimeForRule * 100));
+                ring.style.setProperty("--progress", progress);
+            }
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                checkTimeout();
+            }
+        }, 100);
+    }
+    function checkTimeout() {
+        if (currentRule.type === "noPress") success();
+        else if (currentRule.type === "less" && presses < currentRule.target) success();
+        else if (currentRule.type === "memory") success();
+        else if (currentRule.type === "waitGreen" && !canClick) fail("Too slow!");
+        else fail("Time's up!");
+    }
+    board.addEventListener("mousedown", () => {
+        if (!gameStarted) return;
+        if (!currentRule || !canClick) {
+        if (currentRule && currentRule.type === 'waitGreen') {
+            fail("Clicked too soon!");
+        }
+        return;
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+            soundClick();
+        holding = true;
+        if (currentRule.type === 'waitGreen' && canClick) return success();
+        if (currentRule.type === "hold") {
+        const start = Date.now();
+        const holdInterval = setInterval(() => {
+            if (!holding) {
+                clearInterval(holdInterval);
+            return;
+            }   
+                holdTime = Date.now() - start;
+                ring.style.setProperty("--progress", Math.min(holdTime / currentRule.target * 100, 100));
+            if (holdTime >= currentRule.target) {
+                clearInterval(holdInterval);
+                success();
+            }
+        }, 16);
+        }
+    });
+    board.addEventListener("mouseup", () => {
+        holding = false;
+    });
+    board.addEventListener("click", () => {
+        if (!gameStarted) {
+        return startGame();
+        }
+        if (!currentRule || !canClick || currentRule.type === 'hold' || currentRule.type === 'waitGreen') return;
+        presses++;
+        if (currentRule.type === "count") {
+            const remaining = currentRule.target - presses;
+            if (remaining > 0) instructionEl.textContent = `${remaining} PRESSES REMAINING`;
+        }
+        switch (currentRule.type) {
+        case "noPress":
+            fail("You were told NOT to press");
+            break;
+        case "count":
+            if (presses === currentRule.target) success();
+            break;
+        case "less":
+            if (presses >= currentRule.target) fail("Too many presses");
+            break;
+        case "more":
+            if (presses > currentRule.target) success();
+            break;
+        }
+    });
+    function success() {
+        clearInterval(timer);
+        score++;
+        ring.classList.remove("shake");
+            soundSuccess();
+            setTimeout(nextRule, 2000);
+    }
+    function winGame() {
+        clearInterval(timer);
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('pup_highScore', highScore);
+        }
+        gameStarted = false;
+            infoEl.textContent = "🏆 YOU WIN! 🏆";
+            instructionEl.textContent = `FINAL SCORE: ${score}`;
+        soundSuccess();
+        setTimeout(() => {
+            instructionEl.textContent = "CLICK TO RESTART";
+            infoEl.textContent = `High Score: ${highScore}`;
+            score = 0;
+        }, 3000);
+    }
+    function fail(reason) {
+        clearInterval(timer);
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('pup_highScore', highScore);
+        }
+        gameStarted = false;
+            infoEl.textContent = "✖ FAILED";
+            instructionEl.textContent = reason;
+            ring.classList.add("shake");
+        soundFail();
+        setTimeout(() => {
+            instructionEl.textContent = "CLICK TO RESTART";
+            infoEl.textContent = `High Score: ${highScore}`;
+            score = 0;
+        }, 1500);
+    }
+</script>
+</body>
+</html>
