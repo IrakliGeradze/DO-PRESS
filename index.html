@@ -311,6 +311,7 @@
         };
     }
     const gameRules = [
+        { text: "FREE LEVEL — DONT PRESS", type: "noPress", time: 5000 },
         { text: "PRESS", type: "count", target: 1, time: 10000 },
         { text: "DO NOT PRESS", type: "noPress", time: 8000 },
         { text: "SAME AS LAST", type: "noPress", time: 8000 },
@@ -349,11 +350,10 @@
         { text: "LHTM", type: "noPress", time: 5000 },
         { text: "HMTL", type: "noPress", time: 5000 },
         { text: "CSS IS GOOD", type: "count", target: 1, time: 5000 },
-        { text: "GREEN WILL COME. OR WILL IT?", type: "waitGreen", time: 9000 },
+        { text: "WHENEVER I SAY. OR WILL I?", type: "waitGreen", time: 9000 },
         { text: "RELAX. DON’T TOUCH IT.", type: "noPress", time: 4000 },
         { text: "OK NOW PRESS", type: "count", target: 1, time: 3000 },
-        generateMonthRule,
-        { text: "WAIT FOR GREEN", type: "waitGreen", time: 10000 },
+        { text: "WAIT FOR ME", type: "waitGreen", time: 10000 },
         generatePanicRule,
         { text: "FREE LEVEL — DONT PRESS", type: "noPress", time: 5000 },
         { text: "REMEMBER THIS", type: "memory", time: 3000 },
