@@ -292,7 +292,7 @@
             text: `HOLD FOR ${s} SECOND${s>1?'S':''}`,
             type: "hold",
             target: s * 1000,
-            time: s * 1000 + 4000
+            time: s * 1000 + 2000
         };
     }
     function generateAlphabetOrder() {
@@ -322,12 +322,12 @@
         { text: "0 PRESSES REMAINING", type: "noPress", time: 3000 },
         { text: "DO NOT PRESS", type: "noPress", time: 8000 },
         { text: "PRESS", type: "count", target: 1, time: 10000 },
-        { text: "ALWAYS PRESS TWICE IF YOU SEE "CSS" ", type: "noPress", time: 6000 },
+        { text: "ALWAYS PRESS TWICE IF YOU SEE (CSS)", type: "noPress", time: 6000 },
         generateCapitalRule,
         { text: "PRESS AND HOLD", type: "hold", target: 9000, time: 18000 },
         generateFastCount,
         generateHoldSpecific,
-        { text: "ALWAYS PRESS ONCE IF YOU SEE "HTML"", type: "noPress", time: 6000 },
+        { text: "ALWAYS PRESS ONCE IF YOU SEE (HTML) ", type: "noPress", time: 6000 },
         { text: "CSS", type: "count", target: 2 ,time: 5000 },
         { text: "HTML", type: "count", target: 1, time: 5000 },
         generateMathRule,
@@ -337,8 +337,8 @@
         { text: "DO NOT PRESS", type: "noPress", time: 2000 },
         { text: "HOLD AND REST", type: "hold", target: 2000, time: 15000 },
         { text: "HTML", type: "count", target: 1, time: 5000 },
-        { text: "HTML", type: "count", target: 1, time: 5000 },
-        { text: "HTML", type: "count", target: 1, time: 5000 },
+        { text: "LHTM", type: "count", target: 1, time: 5000 },
+        { text: "HMTL", type: "count", target: 1, time: 5000 },
         { text: "CSS IS GOOD", type: "count", target: 1, time: 5000 },
         generateMonthRule,
         { text: "WAIT FOR GREEN", type: "waitGreen", time: 10000 },
@@ -347,7 +347,7 @@
         { text: "SAME AS LAST", type: "repeat" },
         { text: "PREJJ", type: "noPress", time: 6000 },
         { text: "Kindly PRSEE", type: "noPress", time: 3000}
-        { text: "ALWAYS PRESS ONCE IF YOU SEE "JS" ", type: "noPress", time: 6000 },
+        { text: "ALWAYS PRESS ONCE IF YOU SEE (JS) ", type: "noPress", time: 6000 },
         { text: "IS JS GOOD?", type: "count", target: 1, time: 5000 },
         { text: "PRESS AND HOLD", type: "hold", target: 10000, time: 40000 },
         { text: "PRESS", type: "count", target: 1, time: 5000 },
