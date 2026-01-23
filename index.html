@@ -313,23 +313,32 @@
     const gameRules = [
         { text: "PRESS", type: "count", target: 1, time: 10000 },
         { text: "DO NOT PRESS", type: "noPress", time: 8000 },
+        { text: "SAME AS LAST", type: "noPress", time: 8000 },
         { text: "PRESS 2 TIMES", type: "count", target: 2, time: 8000 },
+        { text: "SAME AS LAST", type: "count", target: 2,, time: 8000 },
         { text: "PRESS 0 TIMES", type: "noPress", time: 6000 },
         { text: "PSREE", type: "noPress", time: 2000 },
         { text: "PRESS 3 TIMES", type: "count", target: 3, time: 5000 },
+        { text: "DO NOT PRESS EVEN IF YOU WANT TO", type: "noPress", time: 5000 },
+        { text: "DO NOT PRESS (SERIOUSLY)", type: "noPress", time: 5000 },
         { text: "PRESS 5 TIMES", type: "count", target: 5, time: 5000 },
         { text: "10 PRESSES REMAINING", type: "count", target: 10, time: 8000 },
         { text: "0 PRESSES REMAINING", type: "noPress", time: 3000 },
         { text: "DO NOT PRESS", type: "noPress", time: 8000 },
         { text: "PRESS", type: "count", target: 1, time: 10000 },
+        { text: "SAME AS LAST", type: "count", target: 1, time: 10000 },
+        { text: "PRESS ONCE. THINK TWICE.", type: "count", target: 1, time: 5000 },
         { text: "ALWAYS PRESS TWICE IF YOU SEE (CSS)", type: "noPress", time: 6000 },
-        generateCapitalRule,
         { text: "PRESS AND HOLD", type: "hold", target: 9000, time: 18000 },
         generateFastCount,
         generateHoldSpecific,
         { text: "ALWAYS PRESS ONCE IF YOU SEE (HTML) ", type: "noPress", time: 6000 },
         { text: "CSS", type: "count", target: 2 ,time: 5000 },
         { text: "HTML", type: "count", target: 1, time: 5000 },
+        { text: "DO NOT PRESS YET", type: "noPress", time: 2000 },
+        { text: "NOW PRESS", type: "count", target: 1, time: 4000 },
+        { text: "WAIT— DONT PRESS", type: "noPress", time: 3000 },
+        { text: "OKAY PRESS", type: "count", target: 1, time: 3000 },
         generateMathRule,
         generateEquationRule,
         generateTruthRule,
@@ -337,12 +346,16 @@
         { text: "DO NOT PRESS", type: "noPress", time: 2000 },
         { text: "HOLD AND REST", type: "hold", target: 2000, time: 15000 },
         { text: "HTML", type: "count", target: 1, time: 5000 },
-        { text: "LHTM", type: "count", target: 1, time: 5000 },
-        { text: "HMTL", type: "count", target: 1, time: 5000 },
+        { text: "LHTM", type: "noPress", time: 5000 },
+        { text: "HMTL", type: "noPress", time: 5000 },
         { text: "CSS IS GOOD", type: "count", target: 1, time: 5000 },
+        { text: "GREEN WILL COME. OR WILL IT?", type: "waitGreen", time: 9000 },
+        { text: "RELAX. DON’T TOUCH IT.", type: "noPress", time: 4000 },
+        { text: "OK NOW PRESS", type: "count", target: 1, time: 3000 },
         generateMonthRule,
         { text: "WAIT FOR GREEN", type: "waitGreen", time: 10000 },
         generatePanicRule,
+        { text: "FREE LEVEL — DONT PRESS", type: "noPress", time: 5000 },
         { text: "REMEMBER THIS", type: "memory", time: 3000 },
         { text: "SAME AS LAST", type: "repeat" },
         { text: "PREJJ", type: "noPress", time: 6000 },
@@ -351,7 +364,7 @@
         { text: "IS JS GOOD?", type: "count", target: 1, time: 5000 },
         { text: "PRESS AND HOLD", type: "hold", target: 10000, time: 40000 },
         { text: "PRESS", type: "count", target: 1, time: 5000 },
-        { text: "DO NOT PRESS", type: "noPress", time: 5000 },
+        { text: "DO NOT PRESS", type: "noPress", time: 2000 },
     ];
     function startGame() {
         gameStarted = true;
@@ -389,7 +402,15 @@
             rule.text = "🐱".repeat(memoryCount);
             forcedNextRule = { text: "PRESS ONCE PER CAT", type: "count", target: memoryCount, time: 5000 };
         }
-            instructionEl.textContent = rule.text;
+        instructionEl.textContent = rule.text;
+        if (rule.text === "FREE LEVEL — DONT PRESS") {
+            setTimeout(() => {
+                if (currentRule && currentRule.text === "FREE LEVEL — DONT PRESS") {
+                    soundScare();
+                    ring.classList.add("shake");
+                }
+            }, 1200); // delay so it hits when they relax
+        }
         if (rule.type !== "memory" && rule.text !== "SAME AS LAST") {
             lastRule = rule;
         }
@@ -418,6 +439,12 @@
                 checkTimeout();
             }
         }, 100);
+    }
+    function soundScare() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+        playTone(90, 0.4, "sawtooth", 0.4);
+        setTimeout(() => playTone(40, 0.6, "square", 0.35), 100);
+        setTimeout(() => playTone(25, 0.8, "sawtooth", 0.3), 200);
     }
     function checkTimeout() {
         if (currentRule.type === "noPress") success();
